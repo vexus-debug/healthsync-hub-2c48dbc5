@@ -27,6 +27,9 @@
   --color-destructive-foreground: hsl(var(--destructive-foreground));
   --color-success: hsl(var(--success));
   --color-success-foreground: hsl(var(--success-foreground));
+  --color-warning: hsl(var(--warning, 36 92% 46%));
+  --color-info: hsl(var(--info, 210 80% 48%));
+  --font-mono: "Geist Mono", ui-monospace, monospace;
   --color-border: hsl(var(--border));
   --color-input: hsl(var(--input));
   --color-ring: hsl(var(--ring));
@@ -147,6 +150,38 @@
     --ring: 140 55% 50%;
 }
 
+/* App shell (staff dashboards): neutral canvas, crisp surfaces */
+.app-shell {
+  --background: 220 14% 97.5%;
+  --card: 0 0% 100%;
+  --muted: 220 14% 95.5%;
+  --muted-foreground: 220 9% 42%;
+  --border: 220 13% 90%;
+  --input: 220 13% 88%;
+  --secondary: 220 14% 95%;
+  --secondary-foreground: 220 20% 18%;
+  --primary-soft: 152 40% 94.5%;
+  --radius: 0.75rem;
+  --shadow-soft: 0 1px 2px hsl(220 20% 10% / 0.04), 0 1px 1px hsl(220 20% 10% / 0.03);
+  --shadow-elegant: 0 8px 24px -12px hsl(220 30% 10% / 0.14), 0 1px 2px hsl(220 20% 10% / 0.05);
+  --warning: 36 92% 46%;
+  --info: 210 80% 48%;
+  font-family: 'Geist', system-ui, sans-serif;
+  font-feature-settings: "cv11", "ss01";
+}
+.app-shell h1, .app-shell h2, .app-shell h3, .app-shell h4 {
+  font-family: 'Geist', system-ui, sans-serif;
+  letter-spacing: -0.02em;
+}
+.app-shell .font-mono, .app-shell code { font-family: 'Geist Mono', ui-monospace, monospace; }
+.dark .app-shell, .app-shell.dark {
+  --background: 220 14% 6%;
+  --card: 220 13% 9%;
+  --muted: 220 12% 13%;
+  --border: 220 12% 17%;
+  --input: 220 12% 19%;
+}
+
 @utility container {
   margin-inline: auto;
   padding-inline: 1.5rem;
@@ -178,6 +213,7 @@
 @utility shadow-soft { box-shadow: var(--shadow-soft); }
 @utility shadow-elegant { box-shadow: var(--shadow-elegant); }
 @utility shadow-glow { box-shadow: var(--shadow-glow); }
+@utility pb-safe { padding-bottom: max(env(safe-area-inset-bottom), 0.5rem); }
 @utility transition-smooth { transition: var(--transition-smooth); }
 @utility text-gradient {
   background-image: var(--gradient-primary);
