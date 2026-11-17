@@ -6,6 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { Navigate } from "@/lib/router-compat";
+import { CannedCommentsManager } from "@/components/bench/CannedCommentsManager";
 
 const Settings = () => {
   const { profile, loading } = useAuth();
@@ -49,6 +50,7 @@ const Settings = () => {
         </CardContent>
       </Card>
     </div>
+    <div className="max-w-4xl mt-4"><CannedCommentsManager /></div>
   </DashboardLayout>
   );
 };

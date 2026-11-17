@@ -5,6 +5,8 @@ import { TestForm } from "@/lib/labCatalog";
 import logo from "@/assets/logo.png";
 import { SITE } from "@/lib/site";
 
+import { AST_KEY, REMARKS_KEY, parseAst } from "@/lib/bench";
+
 export type DynamicRow = { key: string; label: string; unit?: string | null; range?: string | null };
 
 export const ReportPreview = ({ form, values, scientistName, dynamicRows = [] }: { form: TestForm; values: Record<string, string>; scientistName?: string; dynamicRows?: DynamicRow[] }) => {
@@ -128,6 +130,8 @@ export const ReportPreview = ({ form, values, scientistName, dynamicRows = [] }:
         ))}
       </div>
 
+      <BenchSection values={values} />
+
       <div className="px-6 py-3 border-t-2 border-primary/40 bg-slate-50 text-[10px] text-slate-600" data-pdf-section="footer">
         <div className="flex justify-between items-start gap-4 mb-2">
           <span>Medical Laboratory Scientist: <span className="font-medium text-slate-900">{formatScientistName(scientistName)}</span></span>
@@ -159,3 +163,46 @@ const Field = ({ label, value, wide }: { label: string; value: string; wide?: bo
     <p className="font-medium text-slate-800 break-words whitespace-normal">{value || "—"}</p>
   </div>
 );
+
+const BenchSection = ({ values }: { values: Record<string, string> }) => {
+  const ast = parseAst(values[AST_KEY]);
+  const remarks = (values[REMARKS_KEY] ?? "").trim();
+  const hasAst = !!ast.growth;
+  if (!hasAst && !remarks) return null;
+  return (
+    <div className="px-6 pb-4 space-y-4 text-xs text-slate-800" data-pdf-section="bench">
+      {hasAst && (
+        <section>
+          <h3 className="font-bold text-primary uppercase tracking-wider text-[11px] border-b border-primary/30 pb-1 mb-2">Culture &amp; Sensitivity</h3>
+          <p className="mb-2">Specimen: <span className="font-medium">{ast.specimen || "—"}</span> · {ast.growth === "growth" ? "Significant growth" : "No significant growth"}</p>
+          {ast.growth === "growth" && ast.isolates.map((iso, i) => {
+            const entries = Object.entries(iso.results);
+            return (
+              <div key={i} className="mb-2">
+                <p className="font-medium"><i>{iso.organism || "Unidentified organism"}</i>{iso.colonyCount ? ` — ${iso.colonyCount}` : ""}</p>
+                {entries.length > 0 && (
+                  <table className="w-full mt-1">
+                    <tbody>
+                      {entries.map(([ab, r]) => (
+                        <tr key={ab} className="border-b border-slate-100">
+                          <td className="py-1">{ab}</td>
+                          <td className="py-1 font-bold w-24">{r === "S" ? "Sensitive" : r === "I" ? "Intermediate" : "Resistant"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            );
+          })}
+        </section>
+      )}
+      {remarks && (
+        <section>
+          <h3 className="font-bold text-primary uppercase tracking-wider text-[11px] border-b border-primary/30 pb-1 mb-2">Remarks</h3>
+          <p className="whitespace-pre-wrap">{remarks}</p>
+        </section>
+      )}
+    </div>
+  );
+};

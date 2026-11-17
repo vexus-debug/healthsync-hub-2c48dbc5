@@ -26,6 +26,10 @@ import { toast } from "sonner";
 import { fetchLabTests, LabTest, testValueKey } from "@/lib/labTests";
 import { templateFor, fieldKey, TemplateField } from "@/lib/testTemplates";
 import { SpecimenPanel } from "@/components/specimen/SpecimenPanel";
+import { AntibiogramPanel } from "@/components/bench/AntibiogramPanel";
+import { RemarksPanel } from "@/components/bench/RemarksPanel";
+import { CriticalBanner, CriticalValueDialog } from "@/components/bench/CriticalValueDialog";
+import { AST_KEY, REMARKS_KEY, CRITICAL_KEY, parseAst, findCriticalValues, isNoticeComplete, CriticalNotice } from "@/lib/bench";
 import { approveResult, deleteTestForm, reopenApprovedResult } from "@/lib/resultAdmin";
 
 const ResultEntry = () => {
@@ -44,6 +48,7 @@ const ResultEntry = () => {
 
   const [values, setValues] = useState<Record<string, string>>({});
   const [adminReason, setAdminReason] = useState("");
+  const [criticalOpen, setCriticalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [initialized, setInitialized] = useState(false);
   const [autoSavedAt, setAutoSavedAt] = useState<Date | null>(null);
@@ -126,6 +131,15 @@ const ResultEntry = () => {
     })),
   );
 
+  const rowLabels: Record<string, string> = {};
+  dynamicRows.forEach((r) => { rowLabels[r.key] = r.label; });
+  LAB_SECTIONS.forEach((s) => s.fields.forEach((f) => { rowLabels[f.key] = f.label; }));
+  const criticalHits = findCriticalValues(values, rowLabels);
+  let notice: CriticalNotice | null = null;
+  try { notice = values[CRITICAL_KEY] ? JSON.parse(values[CRITICAL_KEY]) : null; } catch { notice = null; }
+  const criticalBlocked = criticalHits.length > 0 && !isNoticeComplete(notice);
+  const needsCulture = (form.tests_requested ?? []).some((t) => /culture|m\s*\/?\s*c\s*\/?\s*s|sensitivity/i.test(t)) || !!values[AST_KEY];
+
   const isApproved = form.approval_status === "Approved";
   const locked = isApproved && !isLabAdmin;
 
@@ -148,6 +162,7 @@ const ResultEntry = () => {
   };
 
   const handleComplete = async () => {
+    if (criticalBlocked) { setCriticalOpen(true); toast.error("Log the physician call for critical values first"); return; }
     setSaving(true);
     try {
       await updateTestFormResults(form.serial, values, "Completed");
@@ -167,6 +182,7 @@ const ResultEntry = () => {
   const adminUser = { id: user?.id ?? "", name: profile?.display_name ?? null };
 
   const handleApprove = async () => {
+    if (criticalBlocked) { setCriticalOpen(true); toast.error("Log the physician call for critical values first"); return; }
     setSaving(true);
     try {
       await updateTestFormResults(form.serial, values);
@@ -242,6 +258,24 @@ const ResultEntry = () => {
       </div>
 
       <SpecimenPanel form={form as never} staffName={profile?.display_name ?? user?.email ?? "Staff"} userId={user?.id} />
+
+      <CriticalBanner hits={criticalHits} notice={notice} />
+      {criticalHits.length > 0 && (
+        <div className="mb-5 -mt-3">
+          <Button variant={criticalBlocked ? "destructive" : "soft"} size="sm" onClick={() => setCriticalOpen(true)} disabled={locked}>
+            {criticalBlocked ? "Log physician call" : "Edit physician call log"}
+          </Button>
+        </div>
+      )}
+      {criticalOpen && (
+        <CriticalValueDialog
+          open={criticalOpen}
+          onOpenChange={setCriticalOpen}
+          hits={criticalHits}
+          initial={notice}
+          onSave={(n) => { setVal(CRITICAL_KEY, JSON.stringify({ ...n, by: profile?.display_name ?? user?.email ?? "" })); setCriticalOpen(false); }}
+        />
+      )}
 
       {/* Test Form Info */}
       <Card className="mb-5 border-border/60 shadow-soft bg-primary-soft/40">
@@ -383,6 +417,12 @@ const ResultEntry = () => {
                 );
               })}
             </Accordion>
+            <div className="mt-5">
+              {needsCulture && (
+                <AntibiogramPanel data={parseAst(values[AST_KEY])} onChange={(d) => setVal(AST_KEY, JSON.stringify(d))} disabled={locked} />
+              )}
+              <RemarksPanel value={values[REMARKS_KEY] ?? ""} onChange={(v) => setVal(REMARKS_KEY, v)} disabled={locked} />
+            </div>
           </CardContent>
         </Card>
 
@@ -421,7 +461,7 @@ const ResultEntry = () => {
           {isLabAdmin && (
             <>
               {!isApproved ? (
-                <Button variant="soft" onClick={handleApprove} disabled={saving || filledCount === 0}>
+                <Button variant="soft" onClick={handleApprove} disabled={saving || filledCount === 0 || criticalBlocked}>
                   <ShieldCheck className="h-4 w-4" /> Approve Result
                 </Button>
               ) : (
@@ -469,7 +509,7 @@ const ResultEntry = () => {
           </Button>
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant="hero" disabled={filledCount === 0 || saving || locked}>
+              <Button variant="hero" disabled={filledCount === 0 || saving || locked || criticalBlocked}>
                 <CheckCircle2 className="h-4 w-4" /> Mark as Completed
               </Button>
             </AlertDialogTrigger>
